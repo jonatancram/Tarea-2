@@ -1,0 +1,1152 @@
+---
+output: 
+  pdf_document:
+    includes:
+      before_body: portada.tex
+      in_header: 
+    toc: true
+    toc_depth: 3
+  tables: true
+include-before:
+- '`\newpage{}`{=latex}'
+toc-title: Contenido
+urlcolor: blue
+header-includes:
+- \usepackage[nottoc]{tocbibind}
+- \renewcommand{\listfigurename}{Lista de figuras}
+- \renewcommand{\listtablename}{Lista de tablas}
+- \usepackage[utf8]{inputenc}
+- \usepackage[spanish]{babel}
+- \usepackage{graphicx}
+- \usepackage{float}
+- \usepackage{lscape}
+---
+
+\newpage
+
+\listoffigures
+
+\listoftables
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.align="center", fig.pos = "H", fig.width = 7, fig.height = 3)
+```
+
+\clearpage
+
+
+```{r}
+pacman::p_load(tidyverse,dplyr,foreign,psych,
+               ggthemes,
+               haven, readxl,
+               kableExtra,
+               cowplot, ggplot2, scales, viridis, latticeExtra,
+               knitr, tinytex, reshape, lubridate, scales, reshape2)
+
+options(knitr.kable.NA = "-")
+```
+
+
+# Ejercicio 2
+
+Simule una variedad de agentes que tienen ingresos permanentes diferentes e ingresos
+transitorios diferentes y calcule la relación entre consumo e ingreso que resulta dada una variedad de supuestos para las varianzas de cada tipo de ingreso siguiendo estos
+pasos:
+
+## (a) 
+(a) Cree un vector de 20 ingresos permanentes aleatorios $Y^p_i$, distribuidos normalmente, con media 10 y varianza $\sigma^p$. Cree 20 vectores (cada uno de estos vectores representa una persona) cada uno con 100 observaciones idénticas del ingreso permanente. Grafíquelos (eje x, persona; eje y, ingreso permanente).
+
+```{r echo=FALSE}
+library(ggplot2)
+#Creamos las matrices dónde guardaremos los datos
+ips <- rnorm(20,mean=10, sd=1)  #Ingresos permanentes aleatorios
+ip_m <- matrix(0,nrow = 20, ncol = 100)
+ip <- matrix(0, nrow = 20, ncol = 3)
+#Vectores de ingreso permanente
+for(i in 1:20){
+  ip_m[i,] <- rnorm(100,ips[i])
+  ip[i,] <- c(i, mean(ip_m[i,]),i)
+}
+ip <- as.data.frame(ip)
+names(ip) <- c("Persona", "IngresoP", "Clase")
+#Grafica
+ggplot(data=ip, aes(color="Clase")) +
+  geom_point(mapping = aes(Persona,IngresoP,color=Clase)) +
+  geom_hline(yintercept = 10) +
+  labs(title="Persona vs. Ingreso permanente",
+       x="Persona",
+       y="Ingreso permanente") +
+    theme_minimal() 
+```
+
+Se crearon 20 ingresos permanentes aleatorios $Y^p_{i}$ con media 1 y varianza 1. Para cada uno de los valores obtenidos se simularon 100 observaciones del ingreso permanente con dicho valor cómo media y varianza 1. Para graficar se tomó el promedio de las observaciones para cada persona. La gráfica muestra los promedios alrededor del valor de 10.
+
+## (b)
+(b) Cree 20 vectores de 100 ingresos transitorios aleatorios $Y_{i,t}^T$ distribuidos normalmente, con media 0 y con varianza $\sigma^T$. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+
+Personas <- seq(1:20)
+Personas <- as.character(Personas)
+periodo= seq(1:100)
+
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000),
+             class = rep(Personas, each = 100)) %>% 
+  mutate(class = factor(class, levels = Personas))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  labs(title="Ingreso transitorio para 20 muestras",
+       x="Periodo",
+       y="Ingreso transitorio") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Se consideró una varianza de 1 para las simulaciones de los ingresos transitorios.
+
+## (c)
+(c) Cree 20 vectores de 100 ingresos totales $Y_{i,t}$, sumando el ingreso transitorio y el permanente. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+
+#Clases
+Personas <- seq(1:20)
+Personas <- as.character(Personas)
+periodo= seq(1:100)
+
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000)+rnorm(2000,10),
+             class = rep(Personas, each = 100)) %>% 
+  mutate(class = factor(class, levels = Personas))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 10) +
+  labs(title="Ingreso totales",
+       x="Periodo",
+       y="Ingreso totales") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Tanto para la varianza del ingreso permanente como para la del transitorio, se consideró una varianza de 1.
+
+## (d)
+(d) Cree 20 vectores de 100 errores de medición $\epsilon_{i,t}$, distribuidos normalmente, con media 0 y varianza $\sigma^{\epsilon}$> 0. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo= seq(1:100)
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000),
+             class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  labs(title="Errores de medición",
+       x="Periodo",
+       y="Errores") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Nuevamente, consideramos que la varianza es de 1.
+
+## (e)
+(e) Cree 20 vectores de 100 consumos $C_{i,t}$ cada uno, de acuerdo a la siguiente regla $C_{i,t}=Y_i^P+0.1Y^T_{i,t}+\epsilon_{i,t}$. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,10), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,10), times=100))
+}
+Yt <- Yp+rnorm(2000)
+
+dd <- tibble(periodo,ingresos = Yp +0.1*rnorm(2000)+ rnorm(2000),
+             class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, ingresos, color = class)) +
+  geom_point(size=0.8) +
+  geom_hline(yintercept = 10) +
+  labs(title="Consumo",
+       x="Observaciones",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class)
+```
+
+Se tomó una varianza de 1 para ambos. El ingreso total se ubica alrededor del valor 10 en algunos casos por encima o por debajo. La dispersión de los puntos parece ser similar entre los agentes.
+
+## (f)
+(f) Estime la relación lineal entre ingreso total y consumo $C_{i,t}+\beta Y_{i,t}+\epsilon_{i,t}$. Describa el resultado de su estimación y grafíque la relación entre las observaciones del consumo y las del ingreso.
+
+Se simularon ingresos permanentes y transitorios con los mismos parámetros que en los anteriores incisos. También se calculó el ingreso total cómo la suma de estos dos. Para puntos se tomó en cuenta el modelo del inciso anterior y se ajustaron los valores del consumo obtenidos al valor del ingreso total. Los resultados de los coeficientes se resumen en la tabla 1.
+
+La ordena al origen parece coincidir con el valor de la media del ingreso permanente, es decir, cercano al valor de 10. Para el valor de la pendiente el promedio de las estimaciones parecen ser consistentes con el valor del modelo de $0.1$. En conclusión la aproximación lineal parece describir bien los datos obtenidos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,10), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,10), times=100))
+}
+Yt <- rnorm(2000)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo vs Ingreso total",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i,modelo$coefficients[1],modelo$coefficients[2])
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+
+## (g)
+(g) Incremente la varianza del ingreso permanente, y disminuya la varianza del ingreso transitorio y vuelva a estimar y graficar la relación entre el consumo y el ingreso.
+
+Se tomó una varianza de 4 para el ingreso permanente y de 0.25 para el ingreso transitorio. El todo lo demás es igual al inciso anterior.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,mean=10,sd=2), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,mean=10,sd=2), times=100))
+}
+Yt <- rnorm(2000,mean=0, sd=0.5)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+Los resultados de las estimación para pendiente en la Tabla 2, muestran que el valor promedio de la pendiente es menor que el valor esperado de 0.1. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i, modelo$coefficients[1], modelo$coefficients[2])
+
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+## (h)
+(h) Disminuya la varianza del ingreso permanente, y aumente la varianza del ingreso transitorio y vuelva a estimar y graficar la relación entre el consumo y el ingreso.
+
+En este caso se eligió una varianza de 0.25 para el ingreso permanente y de 4 para el ingreso transitorio. Los puntos alrededor de las estimaciones lineales parecen estar más dispersos que en el caso anterior.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,mean=10,sd=0.5), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,mean=10,sd=0.5), times=100))
+}
+Yt <- rnorm(2000,mean=0, sd=2)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+En la tabla 3 se resumen los parámetros estimados mediante regresión lineal. Las estimaciones parecen ajustar mejor al valor de 0.1 que se espera.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i, modelo$coefficients[1], modelo$coefficients[2])
+
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+
+Los resultados parecen indicar que una mayor variabilidad del ingreso permanente y una menor variabilidad del ingreso transitorio permiten tener una mejor estimación del valor de la pendiente.
+\clearpage
+
+# Ejercicio 4
+**4. Estudie el consumo de los individuos en México, siguiendo estos pasos:**
+
+
+## (a) 
+
+**Baje los datos de un año de la ENIGH del sitio del INEGI, (Cada grupo va a utilizar unos datos diferentes: Grupo 1-2020, Grupo 2-2018, Grupo 3-2016, ..., etc.) y establezca el número de hogares y el ingreso y el gasto promedio**
+
+
+La obuvimos de [INEGI](https://www.inegi.org.mx/programas/enigh/nc/2010/#Microdatos)
+
+
+
+```{r}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+
+ENIGH2010 <- read.csv(file = "concentrado.csv", sep = ",")
+hogara<- ENIGH2010 %>% as.data.frame()
+
+hogara$q5 <- trunc(hogara$edad/5)*5
+  
+prom1<- apply(hogara [ ,c(1,2)], 2, mean, na.rm = TRUE)%>% as.data.frame() %>% 
+mutate(Ndatos=nrow(hogara))
+# colnames(prom1) <- c("promedio","numero")
+# names(prom1)
+Ndatos=nrow(hogara)
+hogara <- hogara %>%   dplyr::select(q5,ingcor,gasmon,edad,clase_hog)
+
+```
+
+Al inspeccionar las bases de microdatos de “Concentrado de hogares” de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2010, se observó que el número de hogares (cada hogar está identificado por un folio) es de `r Ndatos`. A continuación se muestran la media de ambas variables:
+
+
+```{r}
+knitr::kable(
+  prom1, booktabs = TRUE, format = 'latex', col.names = c( "Promedio nacional ($)","Numero de vivendas"),
+  caption = "Obervaciones y media de la ENIGH 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+
+## (b)
+**Estime una relación entre ingreso y gasto y reporte sus resultados.**
+
+A continuación se grafica los datos de ingreso y gasto trimestral por hogar en miles de pesos.
+
+```{r fig.cap='Relación entre el Gasto y el Ingreso trimestral por hogar, 2010 ', fig.pos = 'H'}
+ayuda<- hogara %>% mutate(ingreso=ingcor,gasto=gasmon) %>%   dplyr::select(ingreso,gasto)
+ayuda=ayuda/1000
+ggplot(ayuda,aes(x=ingreso,y=gasto), pch = 21,) + geom_point()  + 
+  labs(title = "Relación entre el Gasto y el Ingreso trimestral por hogar, 2010")  +  theme(text=element_text(size=12,  family="serif"))+ geom_smooth(method=lm) + 
+  theme_bw()+ 
+scale_x_continuous(
+  name = "Ingreso en Miles de pesos",
+  limits = c(0,500),
+  position = "bottom",
+  sec.axis = waiver())+
+scale_y_continuous(
+  name = "Gasto en Miles de pesos",
+  limits = c(0,500),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "coral")
+
+```
+A Continuación se presentan los resultados de la regresión
+
+```{r }
+modelo <- lm( gasto ~ ingreso, data = ayuda)
+summary( modelo )
+coef <- modelo$coefficients %>% as.data.frame()
+colnames(coef)="coefcientes"
+residual <- summary( modelo ) $ adj.r.squared
+
+```
+Los estimadores de la regresión son:
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(coef, booktabs = TRUE, format = 'latex',
+             col.names = c( "Gasto = a + b*( ingreso) "),
+  caption = "Tabla de Regresión  Ingreso y Gasto trimestral, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda)
+```
+
+Dado lo anterior se tiene una ecuacion Gasto = `r coef[ 1,1]` + `r coef[ 2,1]`* ingreso, con un 
+Coeficiente de determinación R^2 ajustado = `r residual`
+
+## (c)
+
+**Estime una relación entre ingreso y gasto pero para hogares unipersonales de edad entre 30 y 40 años de edad de la Ciudad de México.**
+
+
+```{r}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(coef,prom1,modelo,Ndatos,residual, ayuda,ENIGH2010)
+
+Hog30 <- dplyr::filter(hogara, clase_hog < 2)
+Hog30 <- dplyr::filter(Hog30, edad >29 )
+Hog30 <- dplyr::filter(Hog30, edad <40)
+Hog30<- Hog30 %>% mutate(ingreso=ingcor,gasto=gasmon) %>%   dplyr::select(ingreso,gasto)
+prom1<- apply(Hog30[ ,c(1,2)], 2, mean, na.rm = TRUE)%>% as.data.frame() %>% 
+mutate(Ndatos=nrow(Hog30))
+
+# names(prom1)
+Ndatos=nrow(Hog30)
+
+```
+
+
+Al inspeccionar las bases de microdatos de “Concentrado de hogares” de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2010, se observó que el número de hogares unipersonales entre 30 y 40 años es de `r Ndatos`. 
+A continuación se muestran la media de ambas variables:
+
+
+```{r}
+options(knitr.kable.NA = "-")
+
+knitr::kable(
+  prom1, booktabs = TRUE, format = 'latex', col.names = c( "Promedio nacional ($)","Numero de vivendas"),
+  caption = "Obervaciones y media de la ENIGH 2010, hogares unipersonales de 30 a 40 años"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+```
+A continuación se grafica los datos de ingreso y gasto trimestral por hogar en miles de pesos.
+
+```{r fig.cap='Relación entre el Gasto y el Ingreso trimestral por hogar unipersonal, 2010  de 30 a 40 años \\label{graf2}', fig.pos = 'H'}
+ayuda=Hog30/1000
+ggplot(ayuda,aes(x=ingreso,y=gasto),pch = 21) + geom_point()  + 
+  labs(title = " Gasto y el Ingreso trimestral por hogar, 2010 de  30 a 40 años")  +  theme(text=element_text(size=12,  family="serif"))+ geom_smooth(method=lm) + theme_bw() +
+scale_x_continuous(
+  name = "Ingreso en Miles de pesos",
+  limits = c(0,200),
+  position = "bottom",
+  sec.axis = waiver())+
+scale_y_continuous(
+  name = "Gasto en Miles de pesos",
+  limits = c(0,200),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")
+
+```
+A Continuación se presentan los resultados de la regresión
+
+```{r }
+modelo <- lm( gasto ~ ingreso, data = Hog30)
+coef <- modelo$coefficients %>% as.data.frame()
+colnames(coef)="coefcientes"
+residual <- summary( modelo ) $ adj.r.squared
+
+```
+Los estimadores de la regresión son:
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(coef, booktabs = TRUE, format = 'latex',
+             col.names = c( "Gasto = a + b*( ingreso) "),
+  caption = "Tabla de Regresión  Ingreso y Gasto trimestral, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+Dado lo anterior se tiene una ecuacion Gasto = `r coef[ 1,1]` + `r coef[ 2,1]`* ingreso, con un 
+Coeficiente de determinación R^2 ajustado = `r residual`
+
+
+  
+## (d)
+**Para todos los hogares unipersonales, estime el valor promedio del ingreso por edad, separando la muestra en grupos de edad de cinco años cada uno y grafíquelo.**
+
+```{r}
+mat <- hogara%>% ## aplicar filtros por grupo de  cada 5 años
+  group_by(q5) %>% 
+  summarise(Grupo = paste(mean(q5)," - ",mean(q5)+4), ingreso= mean(ingcor ), gasto= mean(gasmon ))
+
+mat <- mat %>%   dplyr::select(Grupo,ingreso,gasto)
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(G,In1,i,coef,ayuda,residual,prom1,modelo,g1,Ndatos,Hog30)
+```
+
+Utilizando la base de datos completa de la ENIGH 2016, se filtraron las observaciones pertinentes para este ejercicio, a saber: el tipo de hogar. Una vez hecho esto, se obtuvieron los promedios de ingreso y gasto por hogar en grupos de edad de 5 años, los cuales se muestran a continuación. 
+
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(mat, booktabs = TRUE, format = 'latex',
+              caption = "Tabla de Regresión  Ingreso y Gasto trimestral agrupada, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+```
+A continuacion se muestra las graficas. 
+
+```{r fig.cap=' Gasto trimestral por hogar unipersonal, 2010 agrupado', fig.pos = 'H'}
+mode(mat$gasto)<-"numeric"
+
+ggplot(mat, aes(x=Grupo,y=gasto)) + 
+  geom_col(stat = "identity", fill = "darkgoldenrod1", color = "black", width = 0.6,position="stack") + 
+  theme_bw() +
+  labs(title = "Gasto trimestral por hogar unipersonal, 2010 agrupado") +  
+  theme(text = element_text(size=10), # Tamaño de fuente del gráfico por defecto
+          plot.title = element_text(size=rel(1.5), # Tamaño del título, doble del establecido por defecto
+                                    vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="brown2", #Color del texto
+                                    lineheight=1.5), #Separación entre líneas)
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position="none",
+          axis.title.x = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.title.y = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.text = element_text(colour = "black")) +
+geom_hline(yintercept = mean(mat$gasto),colour = "red" )+
+  scale_y_continuous(
+  name = "Gasto (pesos)",
+  position = "left",
+  sec.axis = waiver())
+```
+
+
+```{r fig.cap=' Ingreso trimestral por hogar unipersonal, 2010 agrupado', fig.pos = 'H'}
+pacman::p_load(scales)
+mode(mat$ingreso)<-"numeric"
+ggplot(mat, aes(x=Grupo,y=ingreso)) + 
+  geom_col(stat = "identity", fill = "darkolivegreen2", color = "black", width = 0.6,position="stack") + 
+  theme_bw() +
+  labs(title = "Ingreso trimestral por hogar unipersonal, 2010 agrupado") + 
+  theme(text = element_text(size=10), # Tamaño de fuente del gráfico por defecto
+          plot.title = element_text(size=rel(1.4), # Tamaño del título, doble del establecido por defecto
+                                    vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                    lineheight=1.5), #Separación entre líneas)
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position="none",
+          axis.title.x = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.title.y = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.text = element_text(colour = "black"))+
+  geom_hline(yintercept = mean(mat$gasto),colour = "red" )+
+  scale_y_continuous(
+    name = "Ingreso (pesos)",
+    position = "left",
+    sec.axis = waiver())
+
+```
+
+
+## (e)
+**Interprete sus resultados a la luz de la HIP y comparados con los resultados para las variables agregadas.**
+
+
+1. Es claro que el ingreso promedio trimestral para hogares unipersonales tiene sus puntos más altos de los 26 hasta los 45 años. Esto debido a que se trata de individuos adultos jóvenes, potencialmente muy productivos, que viven solos, lo cual incrementa sustancialmente el ingreso promedio del hogar. 
+2. Por otro lado, a partir de los 71 años, se observa que los ingresos promedios trimestrales de hogares unilaterales caen por debajo de la media. Si suponemos que se trata de adultos mayores cuya productividad y oportunidades laborales son más bien escasas, el comportamiento tiene sentido. 
+3. En el caso del gasto promedio trimestral de hogares unipersonales, la tendencia es, si cabe, aún mucho más evidente: Los jóvenes adultos en etapa productiva tienen gastos sustancialmente altos. De hecho, se evidencia una tendencia consistentemente decreciente en el gasto trimestral cada lustro.
+
+\clearpage
+
+# Ejercicio 5
+**5. Estudie el “acertijo del premio al riesgo” para el caso de México siguiendo estos pasos:**
+
+## (a)
+**Consiga los valores anuales de IPC, el Indice de Precios y Cotizaciones de la Bolsa Mexicana de Valores por lo menos desde 1990.**
+
+```{r Bases eje5, include=FALSE}
+pacman::p_load(tidyverse, readr, foreign, msm, lubridate, readxl,knitr,kableExtra)
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+base5<- read_excel("BASE_5.xlsx")
+IPC2 <-base5 %>% as.data.frame()
+anio <- substr(as.Date(base5$Fecha, origin="1900-01-01"),1,4)
+IPC2 <-base5 %>% as.data.frame() 
+IPC2$anio <- anio%>% as.data.frame()
+colnames(IPC2) <- c("Fecha","Cetes28","Cetes91","Cetes182","Cetes364","Tie28","Tie91","IPC","Consumo","Imp","Anio")
+```
+
+
+Los valores anuales del Índice de Precios y Cotizaciones (IPC) en el periodo 1990-2021 se obtuvieron del Sistema de Información Económica de Banco de México.Dado que la periodicidad de los datos obtenidos era mensual, se prodecio a calcular promedios anuales. Cabe señalar que el índice tiene como base al año 1978.
+
+En la siguiente tabla se pueden observar el crecimiento sostenido y la tendencia positiva en el periodo de referencia.
+```{R 5.a, echo=FALSE}
+IPC2A  <- IPC2  %>%   filter(anio == 1990) %>%   summarise(IPC = mean(IPC))%>% mutate(Fecha=1990)
+  for (i in 1:31) {
+    IPC2A <-rbind(IPC2A, IPC2  %>%   filter(anio == 1990+i) %>%   summarise(IPC =   mean(IPC))%>% mutate(Fecha=1990+i))
+}
+IPC2A <- IPC2A %>%   dplyr::select(Fecha,IPC)
+periodo<-c(1990:2021)
+d1<-(IPC2A[1:11, ])
+d2<-(IPC2A[12:22, ])
+d3<-(IPC2A[23:33, ])
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","IPC Anual"),caption="Valor IPC Anual",digits=2) %>% kable_styling(latex_options = "HOLD_position")
+```
+A continuacion se presenta una grafica 
+```{r fig.cap='Índice de Precios y Cotizaciones de la BMV', fig.pos = 'H'}
+
+ggplot(IPC2A,aes(x=Fecha,y=IPC),pch = 25) + geom_line()  + 
+  labs(title = " Índice de Precios y Cotizaciones de la BMV")  +  
+  theme(text=element_text(size=12,  family="serif")) + 
+  theme_bw() +
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1990,2022),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Índice de Precios y Cotizaciones",
+  limits = c(200,50000),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+#geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")
+base5<-IPC2
+Base5.1 <-IPC2A
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(d1,d2,d3,i,anio,periodo)
+```
+
+## b)
+\textbf{Calcule su tasa de retorno nominal para cada año.}
+
+La tasa de retorno del IPC para el periodo 1990-2021 se calculó utilizando la formula de una tasa de crecimiento convencional:
+
+$$
+ \text { Rendimiento} \ IPC_{t}=\frac{\left(\text { IPC }_{t+1}\right)-\left(\text { IPC }_{t}\right)}{\left(\text { IPC }_{t}\right)}
+$$
+```{R 5.b, echo=FALSE}
+IPC_T<-c((na.omit((IPC2A [ ,2] /lag(IPC2A [ ,2]))-1)))
+Periodo<-c(1991:2021)
+IPC_ren<-data.frame(Periodo,IPC_T)
+names(IPC_ren)= c("Periodo","Rendimiento" )
+d1<-(IPC_ren[1:8, ])
+d2<-(IPC_ren[9:16, ])
+d3<-(IPC_ren[17:24, ])
+d4<-(IPC_ren[25:32, ])
+
+list(d1,d2,d3,d4)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","Rendimiento" ),
+                      caption="Rendimiento IPC Anual",digits=2) %>% 
+                kable_styling(latex_options = "HOLD_position")
+Base5.1<-Base5.1 [-c(1),] %>%mutate(data.frame(IPC_T)) %>%   dplyr::select(Fecha,IPC,IPC_T)
+colnames(Base5.1) <- c("Fecha","IPC","retorno_IPC")
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(d1,d2,d3,d4,anio,IPC_ren,periodo)
+```
+La siguiente gráfica muestra la evolución de la tasa de retorno del IPC, de 1991 a 2020. Para el cálculo
+se tomó la tasa de crecimiento del índice de un año a otro. Se observa una mayor variabilidad en los
+primeros años considerados, y más estabilidad en los últimos años. Las caídas más fuertes, coinciden con los
+acontecimientos que más han impactado de manera negativa en la economía mexicana, y que han tenido su
+orígen en el mercado financiero doméstico e internacional, como por ejemplo en 1994, 1998, 2008 y 2018.
+
+```{r  fig.cap=' Tasa de retorno del IPC de la BMV', fig.pos = 'H', fig.height=3.5}
+
+ggplot(Base5.1,aes(x=Fecha,y=retorno_IPC),pch = 25) + geom_line()  + 
+  labs(title = "  Tasa de retorno del IPC de la BMV")  +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Índice de Precios y Cotizaciones",
+  limits = c(-0.5,1),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+#geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+```
+
+## c)
+
+\textbf{Consiga los valores promedio anual de la tasa de interés de CETES a 7 días, o la TIIE, la tasa inter-bancaria de equilibrio, y de la tasa de interés a un año, para el periodo que esté disponible.}
+
+En la siguiente tabla se pueden observar las tasas de interés de los Certificados de la Tesorería de la Federación (Cetes) a distintos plazos: 28, 91, 182 y 364 días. El comportamiento de estas tasas de interés a corto plazo es muy similar. Se observa que en los últimos 20 años, México ha reportado tasas de interés relativamente bajas en comparación con mediados de los 90’s, periodo en el cual se alcanzarón valores por arriba de 48 puntos porcentuales.
+
+```{r 5.c, echo=FALSE}
+
+Cete28 <- IPC2  %>%   filter(Anio == 1990) %>%   summarise(Cet28 = mean(Cetes28))%>% mutate(Fecha=1990)
+  for (i in 1:31) {
+    Cete28 <-rbind(Cete28, IPC2  %>%   filter(Anio == 1990+i) %>%   summarise(Cet28 =   mean(Cetes28))%>% mutate(Fecha=1990+i)) 
+                                                                                                                                           
+  }
+Cete28 <- Cete28 %>%  mutate(Cetes28=Cet28/100) %>%  dplyr::select(Fecha,Cetes28)
+
+C_28<-matrix(data= base5$Cetes28[1:385],nrow = 12, ncol = 32, byrow = FALSE)
+c_28_proa<-c(colMeans(C_28))*(1/100)
+
+C_91<-matrix(data= base5$`Cetes91`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_91_proa<-c(colMeans(C_91))*(1/100)
+
+C_182<-matrix(data= base5$`Cetes182`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_182_proa<-c(colMeans(C_182))*(1/100)
+
+C_364<-matrix(data= base5$`Cetes364`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_364_proa<-c(colMeans(C_364))*(1/100)
+
+tiie_28<-matrix(data= base5$`Tie28`[1:384], nrow = 12, ncol = 32, byrow = FALSE)
+tiie_28_proa<-c(colMeans(tiie_28))*(1/100)
+
+tiie_91<-matrix(data= base5$`Tie91`[1:384], nrow = 12, ncol = 32, byrow = FALSE)
+tiie_91_proa<-c(colMeans(tiie_91))*(1/100)
+
+result <- data.frame(c_28_proa,c_91_proa,c_182_proa, c_364_proa, tiie_28_proa, tiie_91_proa)
+result <- result[-c(1),]
+result<- Base5.1 %>% mutate(result)
+
+names(result)= c("Periodo","IPC","retorno_IPC", "Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+
+result%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Rendimiento Anual CETES",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+```
+Para el corto plazo se tomó la tasa de interés de CETES a 28 días y para el largo plazo se tomó la tasa de TII Ea 28 días. En la siguiente gráfica se muestra la evolución de ambas tasas, éstas muestran una tendencia descendente entre 1990 y 2020. Se observa un incremento drástico en 1995 con una tasa de 48.65 % debido a la crisis financiera originada internamente a finales de 1994 y principios de 1995.
+
+
+```{r fig.cap=' Tasa de CETES a 28 dia\\label{graf8}', fig.pos = 'H',fig.height=3.5 }
+Base5.1<- result
+
+names(Base5.1)= c("Periodo","IPC","retorno_IPC", "Cetes28", "Cetes91", "Cetes182", "Cetes364", "TIIE28", "TIIE91")
+ayuda1<-matrix(data= "Cetes 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda2<-matrix(data= "TIIE 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda <- c(ayuda1,ayuda2)
+ayuda <-ayuda %>%as.data.frame() 
+ayuda2<- c(Base5.1$Cetes28,Base5.1$TIIE28) %>%as.data.frame()
+cete1<-c(Base5.1$Periodo,Base5.1$Periodo) %>%as.data.frame() 
+grafo<-cbind(cete1,ayuda,ayuda2)
+names(grafo)= c("Periodo","Cetes28", "TIIE28")
+ggplot(grafo,aes(x=Periodo, y= TIIE28*100,color =Cetes28 ),pch = 25) +  geom_line()  + 
+  labs(title = "  Tasa de CETES a 28 dias") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " CETES  y TIIE a 28 dias (%)",
+  limits = c(0,50),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+
+```
+
+```{r 5.l, echo=FALSE}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(tie28,ayuda,ayuda,ayuda1,ayuda2,C_182,c_28_c364,tiie_28,tiie_91,i,periodo,Periodo,result)
+```
+
+
+
+
+
+## d)
+\textbf{Calcule la diferencia entre el retorno del IPC y el retorno de invertir en CETES a distintos plazos.}
+
+```{r 5.d, echo=FALSE}
+Base5.1<- Base5.1 %>%mutate(dif_c28=Base5.1$retorno_IPC-Base5.1$Cetes28) %>% mutate(dif_c91=Base5.1$retorno_IPC-Base5.1$Cetes91)%>% mutate(dif_c182=Base5.1$retorno_IPC-Base5.1$Cetes182) %>% mutate(dif_c364=Base5.1$retorno_IPC-Base5.1$Cetes364) %>% mutate(dif_tiie28=Base5.1$retorno_IPC-Base5.1$TIIE28) %>% mutate(dif_tiie91=Base5.1$retorno_IPC-Base5.1$TIIE91)
+
+dif_c28<-c(IPC_T- c_28_proa)
+dif_c91<-c(IPC_T- c_91_proa)
+dif_c182<-c(IPC_T- c_182_proa)
+dif_c364<-c(IPC_T- c_364_proa)
+dif_tiie28<-c(IPC_T- tiie_28_proa)
+dif_tiie91<-c(IPC_T- tiie_91_proa)
+Periodo<-c(1990:2021)
+result_dif <- Base5.1 %>%dplyr::select(Periodo,dif_c28,dif_c91,dif_c182,dif_c364, dif_tiie28, dif_tiie91)
+
+#kable(result_dif[1:32, ], caption = "Diferencia Entre Retornos")
+
+result_dif%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Diferencia Entre Retornos",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+```
+
+La siguiente gráfica muestra el diferencial de los retornos del IPC y de invertir en CETES a 28 días y el diferencial de los retornos del IPC y de invertir en CETES A 364 días. Se observa que el diferencial (exceso de rendimiento) para ambos casos es más estable en la última década. Se observan caídas importantes del exceso de rendimiento con respecto a los activos sin riesgo en 1995, 1998, 2000, 2008, y 2018.
+
+```{r 5.P, echo=FALSE}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(result_dif)
+```
+
+```{r fig.cap=' Diferencial de retornos del IPC con respecto  a CETES a 28 y 364 días', fig.pos = 'H',fig.height=3.5 }
+
+ayuda1<-matrix(data= "Cetes 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda2<-matrix(data= "Cetes 364",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda <-c(ayuda1,ayuda2) %>%as.data.frame() 
+ayuda2<- c(Base5.1$dif_c28,Base5.1$dif_c364) %>%as.data.frame()
+cete1<-c(Base5.1$Periodo,Base5.1$Periodo) %>%as.data.frame() 
+grafo<-cbind(cete1,ayuda,ayuda2)
+names(grafo)= c("Periodo","Cetes28", "Cestes364")
+ggplot(grafo,aes(x=Periodo, y= Cestes364*100,color =Cetes28 ),pch = 25) +  geom_line()  + 
+  labs(title = " Diferencial de retornos del IPC con respecto  a CETES a 28 y 364 días") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Diferencial de retornos (%)",
+  limits = c(-50,75),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda)
+```
+
+
+## e) y f)
+\textbf{Calcule la covarianza entre dicha diferencias y la tasa de crecimiento real del consumo agregado de la economía mexicana y calcule el valor de aversión relativa al riesgo que implican estos números, dado el supuesto de una utilidad con forma ARRC.}
+
+A continuación se muestra la tasa de crecimiento del consumo agregado con datos correspondientes a la serie de "Consumo Privado" para el periodo 1994-2020, obtenidos del Banco de Información Económica (BIE) del Instituto Nacional de Estadística y Geografía (INEGI).
+
+```{R 5.e.1, echo=FALSE, results='asis'}
+
+C<-matrix(data= base5$Consumo[1:112],nrow = 4, ncol = 28, byrow = FALSE)
+c_proa<-c(colMeans(C))
+C_T <-c((na.omit((c_proa/lag(c_proa) - 1))))
+
+Periodo<-c(1994:2020)
+
+result_con <-data.frame(Periodo,C_T)
+d1<-result_con[1:9, ]
+d2<-result_con[10:18, ]
+d3<-result_con[19:27, ]
+
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Tasa de Crecimiento Consumo",digits=4) %>% 
+       kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+En la siguiente gráfica se muestra la evolución de la tasa de crecimiento del consumo (g c ) de la economía mexicana de 1994 a 2020. Las caídas más drásticas se obervan en 1995, 2009 y 2020, siendo sta última la
+caida más grande del periodo, con una tasa de -7.0 %, casi del doble de la caída de 1995 y 2009.
+
+```{r fig.cap=' Tasa de Crecimiento Consumo', fig.pos = 'H' }
+
+ggplot(result_con,aes(x=Periodo, y= C_T*100 ),pch = 25) +  geom_line()  + 
+  labs(title = " Tasa de Crecimiento Consumo") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1994,2021),
+    position = "bottom",
+    n.breaks = 10,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Tasa de Crecimiento Consumo(%)",
+  limits = c(-10,10),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda,C,c_proa,C_28)
+```
+El cálculo de la covarianza entre CETES y la tasa de consumo encontrada se realizó conforme a la siguiente fórmula:
+
+$$\sigma_{r^{i} - r^{j},g^{c}} = E[(r^{i} - r^{j})* g^{c}] - E[r^{i} - r^{j}]E[g^{c}]$$
+
+Y el valor de aversión relativo al riesgo con la fórmula:
+$$
+\theta=\frac{E\left[r^{i}\right]-E\left[r^{j}\right]}{\operatorname{Cov}\left(r^{i}-r^{j}, g^{c}\right)}
+$$
+Donde $\theta$ representa el coeficiente de aversión al riesgo; $E\left[r^{i}\right]-E\left[r^{j}\right]$ es la diferencia de los rendimientos esperados de la tasa de los activos (IPC) y $g^{c}$ representa la tasa de crecimiento del consumo.
+
+```{R 5.e.f, echo=FALSE,results='asis'}
+cov_c28<-cov(C_T,dif_c28[5:31])
+cov_c91<-cov(C_T,dif_c91[5:31])
+cov_c182<-cov(C_T,dif_c182[5:31])
+cov_c364<-cov(C_T,dif_c364[5:31])
+cov_tiie28<-cov(C_T[3:27],dif_tiie28[7:31])
+cov_tiie91<-cov(C_T[4:27],dif_tiie28[8:31])
+
+theta1<- mean(dif_c28)/cov_c28
+  theta2<- mean(dif_c91)/cov_c91
+  theta3<- mean(dif_c182)/cov_c182
+  theta4<- mean(dif_c364)/cov_c364
+  theta5<- mean(dif_tiie28)/cov_tiie28
+  theta6<- mean(dif_tiie91)/cov_tiie91
+  
+  theta<-c(theta1,theta2,theta3,theta4,theta5,theta6)
+   Covarianza<-c(cov_c28,cov_c91,cov_c182,cov_c364, cov_tiie28, cov_tiie91)
+  Bono<-c("Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+   
+  result_consumo<-data.frame(Bono,Covarianza,theta)
+  
+  names(result_consumo)= c("Bono","Covarianza","Theta")
+
+  
+  ##kable(result_consumo[1:6, ], caption = "Covarianza y Aversión Relativa al Riesgo")
+  
+  result_consumo%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Bono","Covarianza","Theta"), caption="Covarianza y Aversión Relativa al Riesgo",digits=3) %>% 
+      kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+## g) y h)
+\textbf{Ahora calcule la covarianza entre dicha diferencias y la tasa de crecimiento real del consumo agregado DE BIENES IMPORTADOS y calcule el valor de aversión relativa al riesgo que implican estos números, dado  el supuesto de una utilidad con forma ARRC.}
+
+Del BIE se obtubo la serie "Indicador mensual del consumo privado en el mercado interior,Bienes importados", la cual está compuesta por un índice que proporciona información sobre la proporción dee bienes de importación que se consumen en el país. Debido a su periodicidad mensual, se procedio en primera instancia a realizar una anualización para posteriormente calcular su variación anual mediante una tasa de crecimiento convencional.
+
+Con respecto al cálculo de covarianza e indicador de aversión, se siguió el mismo procedimiento que en los incisos e) y f). A continuación se muestran los resultados obtenidos.
+
+
+```{R 5.g.h, echo=FALSE }
+#base5_imp<- read_excel("Impor_BIE.xls")
+C_imp<-matrix(data= base5$Imp [1:336],nrow = 12, ncol = 28, byrow = FALSE)
+C_imp_proa<-c(colMeans(C_imp))
+C_Imp_T <-c((na.omit((C_imp_proa/lag(C_imp_proa) - 1))))
+
+cov_c28_imp<-cov(C_Imp_T,dif_c28[5:31])
+cov_c91_imp<-cov(C_Imp_T,dif_c91[5:31])
+cov_c182_imp<-cov(C_Imp_T,dif_c182[5:31])
+cov_c364_imp<-cov(C_Imp_T,dif_c364[5:31])
+cov_tiie28_imp<-cov(C_Imp_T[3:27],dif_tiie28[7:31])
+cov_tiie91_imp<-cov(C_Imp_T[4:27],dif_tiie91[8:31])
+
+theta1_imp<- mean(dif_c28)/cov_c28_imp
+theta2_imp<- mean(dif_c91)/cov_c91_imp
+theta3_imp<- mean(dif_c182)/cov_c182_imp
+theta4_imp<- mean(dif_c364)/cov_c364_imp
+theta5_imp<- mean(dif_tiie28[7:31])/cov_tiie28_imp
+theta6_imp<- mean(dif_tiie91[8:31])/cov_tiie91_imp
+
+Covarianza_Imp<-c(cov_c28_imp,cov_c91_imp,cov_c182_imp,cov_c364_imp, cov_tiie28_imp, cov_tiie91_imp)
+theta_Imp<-c(theta1_imp,theta2_imp,theta3_imp,theta4_imp,theta5_imp,theta6_imp)
+  Bono<-c("Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+
+result_consumo_Imp<-data.frame(Bono,Covarianza_Imp,theta_Imp)
+names(result_consumo_Imp)= c("Bono","Covarianza","Theta")
+
+Periodo<-c(1994:2020)
+result_con_imp<-data.frame(Periodo,C_Imp_T)
+
+
+d1<-result_con_imp[1:9, ]
+d2<-result_con_imp[10:18, ]
+d3<-result_con_imp[19:27, ]
+
+```
+
+```{R , echo=FALSE }
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","Tasa Consumo"), caption="Tasa de Crecimiento Consumo de Bienes Importados",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+
+
+```
+A continucaion se muestra la grafica del Crecimiento Consumo de Bienes Importados
+
+```{r fig.cap=' Tasa de Crecimiento Consumo de Bienes Importados', fig.pos = 'H' }
+
+ggplot(result_con_imp,aes(x=Periodo, y= C_Imp_T*100 ),pch = 25) +  geom_line()  + 
+  labs(title = " Tasa de Crecimiento Consumo de Bienes Importados") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1994,2021),
+    position = "bottom",
+    n.breaks = 10,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Tasa de Crecimiento Consumo(%)",
+  limits = c(-50,40),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda,C,c_proa,C_28)
+```
+
+```{R , echo=FALSE }
+
+kable(result_consumo_Imp[1:6, ],format="latex",booktabs=TRUE, caption= "Covarianza y Aversión Realativa al Riesgo c.r.a Bienes Importados") %>% 
+                kable_styling(latex_options = "HOLD_position")
+
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+```
+## i)
+\textbf{Interprete sus resultados.}
+
+Para la primera muestra, el coeficiente theta oscila relativamente constante entre el corto (28 días) y largo plazo (364 días) además
+presentan un coefciente de aversión muy alto, congruente con la evidencia empírica del acertijo de la prima
+de acción.Destaca que para el caso de la TIEE el valor de theta resulta más alto.
+
+Para  la segunda muestra, el coeficiente theta es menor, alrededor 3.74 promedio para CETES de corto y largo plazo y un promedio de 5.59 para el caso de la TIIE.
+Podemos relacionar este resultado a los obtenidos por Ait-Sahalia et al. incorporando el consumo de bienes
+de lujos; una variable proxy puede ser el consumo de bienes importados.
+
+
+\clearpage
+
+
+# Ejercicio 6
+
+Utilice el método todo del árbol binomial para, primero, explicar el precio P=80 de un activo y, después, valuar un "call" sobre dicho activo, con precio de ejercicio K=P-N donde N es el número de su equipo, (Grupo 1, use N=1, Grupo 2, use N=2, etc.) asumiendo una tasa de interés de 5 por ciento.
+
+El modelo binomial es un modelo discreto que permite observar el comportamiento del precio de las acciones a través del tiempo. La principal suposición es que el activo sigue una caminata aleatoria. Sea S el precio de la acción al momento $t$, el precio puede subir a $S_u$ o bajar a $S_d$ de un período a otro. Por otro lado, el precio de la opción de compra es $c$ siendo $c_u$ y $c_d$ los precios alcista y bajista respectivamente. Resolviendo el modelo se obtiene que el precio del "call" es:
+
+$$c=\frac{qc_u+(1-q)c_d}{e^{rT}}$$
+donde $r$ es la tasa libre de riesgo, $T$ es el tiempo de expiración y $q$ es la probabilidad subjetiva.
+
+Ahora, la probabilidad q es igual a:
+
+$$q=\frac{Se^{r}-S_d}{S_u-S_d}$$
+Suponiendo una volatilidad del 20% tenemos que $q=0.628$. Por otro lado tenemos que $c_u=96-74=22$ y entonces $c_d=64-74=0$Ahora, el precio del call es:
+
+$$c=\frac{qc_u}{e^{rT}}=13.14$$
