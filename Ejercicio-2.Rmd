@@ -1,0 +1,339 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+*Ejercicio 2*
+
+Simule una variedad de agentes que tienen ingresos permanentes diferentes e ingresos
+transitorios diferentes y calcule la relación entre consumo e ingreso que resulta dada una variedad de supuestos para las varianzas de cada tipo de ingreso siguiendo estos
+pasos:
+
+(a) Cree un vector de 20 ingresos permanentes aleatorios $Y^p_i$, distribuidos normalmente, con media 10 y varianza $\sigma^p$. Cree 20 vectores (cada uno de estos vectores representa una persona) cada uno con 100 observaciones idénticas del ingreso permanente. Grafíquelos (eje x, persona; eje y, ingreso permanente).
+
+```{r echo=FALSE}
+library(ggplot2)
+#Creamos las matrices dónde guardaremos los datos
+ips <- rnorm(20,mean=10, sd=1)  #Ingresos permanentes aleatorios
+ip_m <- matrix(0,nrow = 20, ncol = 100)
+ip <- matrix(0, nrow = 20, ncol = 3)
+#Vectores de ingreso permanente
+for(i in 1:20){
+  ip_m[i,] <- rnorm(100,ips[i])
+  ip[i,] <- c(i, mean(ip_m[i,]),i)
+}
+ip <- as.data.frame(ip)
+names(ip) <- c("Persona", "IngresoP", "Clase")
+#Grafica
+ggplot(data=ip, aes(color="Clase")) +
+  geom_point(mapping = aes(Persona,IngresoP,color=Clase)) +
+  geom_hline(yintercept = 10) +
+  labs(title="Persona vs. Ingreso permanente",
+       x="Persona",
+       y="Ingreso permanente") +
+    theme_minimal() 
+```
+
+Se crearon 20 ingresos permanentes aleatorios $Y^p_{i}$ con media 1 y varianza 1. Para cada uno de los valores obtenidos se simularon 100 observaciones del ingreso permanente con dicho valor cómo media y varianza 1. Para graficar se tomó el promedio de las observaciones para cada persona. La gráfica muestra los promedios alrededor del valor de 10.
+
+(b) Cree 20 vectores de 100 ingresos transitorios aleatorios $Y_{i,t}^T$ distribuidos normalmente, con media 0 y con varianza $\sigma^T$. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+
+Personas <- seq(1:20)
+Personas <- as.character(Personas)
+periodo= seq(1:100)
+
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000),
+             class = rep(Personas, each = 100)) %>% 
+  mutate(class = factor(class, levels = Personas))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  labs(title="Ingreso transitorio para 20 muestras",
+       x="Periodo",
+       y="Ingreso transitorio") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Se consideró una varianza de 1 para las simulaciones de los ingresos transitorios.
+
+(c) Cree 20 vectores de 100 ingresos totales $Y_{i,t}$, sumando el ingreso transitorio y el permanente. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+
+#Clases
+Personas <- seq(1:20)
+Personas <- as.character(Personas)
+periodo= seq(1:100)
+
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000)+rnorm(2000,10),
+             class = rep(Personas, each = 100)) %>% 
+  mutate(class = factor(class, levels = Personas))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 10) +
+  labs(title="Ingreso totales",
+       x="Periodo",
+       y="Ingreso totales") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Tanto para la varianza del ingreso permanente como para la del transitorio, se consideró una varianza de 1.
+
+(d) Cree 20 vectores de 100 errores de medición $\epsilon_{i,t}$, distribuidos normalmente, con media 0 y varianza $\sigma^{\epsilon}$> 0. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo= seq(1:100)
+for(i in 2:20){
+  periodo <- c(periodo,seq(1:100))
+}
+
+dd <- tibble(periodo,ingresos = rnorm(2000),
+             class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+  
+ggplot(dd, aes(periodo, ingresos, color = class)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  labs(title="Errores de medición",
+       x="Periodo",
+       y="Errores") +
+  scale_color_discrete(breaks="NULL") +
+    theme_minimal() +
+  facet_wrap(~class)
+
+```
+
+Nuevamente, consideramos que la varianza es de 1.
+
+(e) Cree 20 vectores de 100 consumos $C_{i,t}$ cada uno, de acuerdo a la siguiente regla $C_{i,t}=Y_i^P+0.1Y^T_{i,t}+\epsilon_{i,t}$. Grafíquelos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,10), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,10), times=100))
+}
+Yt <- Yp+rnorm(2000)
+
+dd <- tibble(periodo,ingresos = Yp +0.1*rnorm(2000)+ rnorm(2000),
+             class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, ingresos, color = class)) +
+  geom_point(size=0.8) +
+  geom_hline(yintercept = 10) +
+  labs(title="Consumo",
+       x="Observaciones",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class)
+```
+
+Se tomó una varianza de 1 para ambos. El ingreso total se ubica alrededor del valor 10 en algunos casos por encima o por debajo. La dispersión de los puntos parece ser similar entre los agentes.
+
+(f) Estime la relación lineal entre ingreso total y consumo $C_{i,t}+\beta Y_{i,t}+\epsilon_{i,t}$. Describa el resultado de su estimación y grafíque la relación entre las observaciones del consumo y las del ingreso.
+
+Se simularon ingresos permanentes y transitorios con los mismos parámetros que en los anteriores incisos. También se calculó el ingreso total cómo la suma de estos dos. Para puntos se tomó en cuenta el modelo del inciso anterior y se ajustaron los valores del consumo obtenidos al valor del ingreso total. Los resultados de los coeficientes se resumen en la tabla 1.
+
+La ordena al origen parece coincidir con el valor de la media del ingreso permanente, es decir, cercano al valor de 10. Para el valor de la pendiente el promedio de las estimaciones parecen ser consistentes con el valor del modelo de $0.1$. En conclusión la aproximación lineal parece describir bien los datos obtenidos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,10), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,10), times=100))
+}
+Yt <- rnorm(2000)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo vs Ingreso total",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i,modelo$coefficients[1],modelo$coefficients[2])
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+
+(g) Incremente la varianza del ingreso permanente, y disminuya la varianza del ingreso transitorio y vuelva a estimar y graficar la relación entre el consumo y el ingreso.
+
+Se tomó una varianza de 4 para el ingreso permanente y de 0.25 para el ingreso transitorio. El todo lo demás es igual al inciso anterior.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,mean=10,sd=2), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,mean=10,sd=2), times=100))
+}
+Yt <- rnorm(2000,mean=0, sd=0.5)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+Los resultados de las estimación para pendiente en la Tabla 2, muestran que el valor promedio de la pendiente es menor que el valor esperado de 0.1. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i, modelo$coefficients[1], modelo$coefficients[2])
+
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+(h) Disminuya la varianza del ingreso permanente, y aumente la varianza del ingreso transitorio y vuelva a estimar y graficar la relación entre el consumo y el ingreso.
+
+En este caso se eligió una varianza de 0.25 para el ingreso permanente y de 4 para el ingreso transitorio. Los puntos alrededor de las estimaciones lineales parecen estar más dispersos que en el caso anterior.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+#Clases
+clases <- seq(1:20)
+clases <- as.character(clases)
+#Periodos
+periodo <- rep(seq(1:100),20)
+#Ingresos Permanentes
+Yp <- rep(rnorm(1,mean=10,sd=0.5), times=100)
+for (i in 2:20) {
+  Yp <- c(Yp, rep(rnorm(1,mean=10,sd=0.5), times=100))
+}
+Yt <- rnorm(2000,mean=0, sd=2)
+Yt <- Yp+Yt
+dd <- tibble(periodo,consumo = Yp +0.1*Yt+ rnorm(2000),
+             ingreso=Yt,class = rep(clases, each = 100)) %>% 
+  mutate(class = factor(class, levels = clases))
+
+ggplot(dd,aes(periodo, consumo, color = class)) +
+  geom_point(size=0.8) +
+  labs(title="Consumo",
+       x="Muestras",
+       y="Consumo") +
+  scale_color_discrete(breaks="NULL") +
+  facet_wrap(~class) +
+  stat_smooth(method="lm", se=FALSE, colour="black", size=0.7) 
+
+```
+
+En la tabla 3 se resumen los parámetros estimados mediante regresión lineal. Las estimaciones parecen ajustar mejor al valor de 0.1 que se espera.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+estimaciones <- data.frame(matrix(0,nrow = 21, ncol = 3))
+
+for (i in 1:20) {
+  modelo <- lm(consumo ~ ingreso, data = dd, subset = (class==i))
+  estimaciones[i,]  <- c(i, modelo$coefficients[1], modelo$coefficients[2])
+
+}
+estimaciones[21,1] <- " "
+estimaciones[21,2] <- mean(estimaciones[,2])
+estimaciones[21,3] <- mean(estimaciones[,3])
+
+kable(estimaciones, caption = "Parámetros de la regresión",
+      align = 'c', digits = round(3),
+      col.names = c("$Agente$", "$Ordenada$","$Pendiente$"))
+```
+
+Los resultados parecen indicar que una mayor variabilidad del ingreso permanente y una menor variabilidad del ingreso transitorio permiten tener una mejor estimación del valor de la pendiente.
+
+

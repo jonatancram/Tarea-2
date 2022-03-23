@@ -1,0 +1,21 @@
+---
+output: pdf_document
+---
+
+
+*Ejercicio 6*
+
+Utilice el método todo del árbol binomial para, primero, explicar el precio P=80 de un activo y, después, valuar un "call" sobre dicho activo, con precio de ejercicio K=P-N donde N es el número de su equipo, (Grupo 1, use N=1, Grupo 2, use N=2, etc.) asumiendo una tasa de interés de 5 por ciento.
+
+El modelo binomial es un modelo discreto que permite observar el comportamiento del precio de las acciones a través del tiempo. La principal suposición es que el activo sigue una caminata aleatoria. Sea S el precio de la acción al momento $t$, el precio puede subir a $S_u$ o bajar a $S_d$ de un período a otro. Por otro lado, el precio de la opción de compra es $c$ siendo $c_u$ y $c_d$ los precios alcista y bajista respectivamente. Resolviendo el modelo se obtiene que el precio del "call" es:
+
+$$c=\frac{qc_u+(1-q)c_d}{e^{rT}}$$
+donde $r$ es la tasa libre de riesgo, $T$ es el tiempo de expiración y $q$ es la probabilidad subjetiva.
+
+Ahora, la probabilidad q es igual a:
+
+$$q=\frac{Se^{r}-S_d}{S_u-S_d}$$
+Suponiendo una volatilidad del 20% tenemos que $q=0.628$. Por otro lado tenemos que $c_u=96-74=22$ y entonces $c_d=64-74=0$Ahora, el precio del call es:
+
+$$c=\frac{qc_u}{e^{rT}}=13.14$$
+
