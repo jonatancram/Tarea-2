@@ -1,0 +1,313 @@
+---
+output: 
+  pdf_document:
+    includes:
+      in_header: 
+    toc: true
+    toc_depth: 3
+  tables: true
+include-before:
+- '`\newpage{}`{=latex}'
+toc-title: Contenido
+urlcolor: blue
+header-includes:
+- \usepackage[nottoc]{tocbibind}
+- \renewcommand{\listfigurename}{Lista de figuras}
+- \renewcommand{\listtablename}{Lista de tablas}
+- \usepackage[utf8]{inputenc}
+- \usepackage[spanish]{babel}
+- \usepackage{graphicx}
+- \usepackage{float}
+- \usepackage{lscape}
+---
+
+\newpage
+
+\listoffigures
+
+\listoftables
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.align="center", fig.pos = "H", fig.width = 7, fig.height = 3)
+```
+
+\clearpage
+
+
+
+# Ejercicio 4
+**4. Estudie el consumo de los individuos en México, siguiendo estos pasos:**
+
+
+## (a) 
+
+**Baje los datos de un año de la ENIGH del sitio del INEGI, (Cada grupo va a utilizar unos datos diferentes: Grupo 1-2020, Grupo 2-2018, Grupo 3-2016, ..., etc.) y establezca el número de hogares y el ingreso y el gasto promedio**
+
+
+La obuvimos de [INEGI](https://www.inegi.org.mx/programas/enigh/nc/2010/#Microdatos)
+
+
+
+```{r}
+pacman::p_load(tidyverse,dplyr,foreign,psych,
+               ggthemes,
+               haven, readxl,
+               kableExtra,
+               cowplot, ggplot2, scales, viridis, latticeExtra,
+               knitr, tinytex, reshape, lubridate, scales, reshape2)
+
+options(knitr.kable.NA = "-")
+
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+
+ENIGH2010 <- read.csv(file = "concentrado.csv", sep = ",")
+hogara<- ENIGH2010 %>% as.data.frame()
+
+hogara$q5 <- trunc(hogara$edad/5)*5
+  
+prom1<- apply(hogara [ ,c(1,2)], 2, mean, na.rm = TRUE)%>% as.data.frame() %>% 
+mutate(Ndatos=nrow(hogara))
+# colnames(prom1) <- c("promedio","numero")
+# names(prom1)
+Ndatos=nrow(hogara)
+hogara <- hogara %>%   dplyr::select(q5,ingcor,gasmon,edad,clase_hog)
+
+```
+
+Al inspeccionar las bases de microdatos de “Concentrado de hogares” de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2010, se observó que el número de hogares (cada hogar está identificado por un folio) es de `r Ndatos`. A continuación se muestran la media de ambas variables:
+
+
+```{r}
+knitr::kable(
+  prom1, booktabs = TRUE, format = 'latex', col.names = c( "Promedio nacional ($)","Numero de vivendas"),
+  caption = "Obervaciones y media de la ENIGH 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+
+## (b)
+**Estime una relación entre ingreso y gasto y reporte sus resultados.**
+
+A continuación se grafica los datos de ingreso y gasto trimestral por hogar en miles de pesos.
+
+```{r fig.cap='Relación entre el Gasto y el Ingreso trimestral por hogar, 2010 ', fig.pos = 'H'}
+ayuda<- hogara %>% mutate(ingreso=ingcor,gasto=gasmon) %>%   dplyr::select(ingreso,gasto)
+ayuda=ayuda/1000
+ggplot(ayuda,aes(x=ingreso,y=gasto), pch = 21,) + geom_point()  + 
+  labs(title = "Relación entre el Gasto y el Ingreso trimestral por hogar, 2010")  +  theme(text=element_text(size=12,  family="serif"))+ geom_smooth(method=lm) + 
+  theme_bw()+ 
+scale_x_continuous(
+  name = "Ingreso en Miles de pesos",
+  limits = c(0,500),
+  position = "bottom",
+  sec.axis = waiver())+
+scale_y_continuous(
+  name = "Gasto en Miles de pesos",
+  limits = c(0,500),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "coral")
+
+```
+A Continuación se presentan los resultados de la regresión
+
+```{r }
+modelo <- lm( gasto ~ ingreso, data = ayuda)
+summary( modelo )
+coef <- modelo$coefficients %>% as.data.frame()
+colnames(coef)="coefcientes"
+residual <- summary( modelo ) $ adj.r.squared
+
+```
+Los estimadores de la regresión son:
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(coef, booktabs = TRUE, format = 'latex',
+             col.names = c( "Gasto = a + b*( ingreso) "),
+  caption = "Tabla de Regresión  Ingreso y Gasto trimestral, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda)
+```
+
+Dado lo anterior se tiene una ecuacion Gasto = `r coef[ 1,1]` + `r coef[ 2,1]`* ingreso, con un 
+Coeficiente de determinación R^2 ajustado = `r residual`
+
+## (c)
+
+**Estime una relación entre ingreso y gasto pero para hogares unipersonales de edad entre 30 y 40 años de edad de la Ciudad de México.**
+
+
+```{r}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(coef,prom1,modelo,Ndatos,residual, ayuda,ENIGH2010)
+
+Hog30 <- dplyr::filter(hogara, clase_hog < 2)
+Hog30 <- dplyr::filter(Hog30, edad >29 )
+Hog30 <- dplyr::filter(Hog30, edad <40)
+Hog30<- Hog30 %>% mutate(ingreso=ingcor,gasto=gasmon) %>%   dplyr::select(ingreso,gasto)
+prom1<- apply(Hog30[ ,c(1,2)], 2, mean, na.rm = TRUE)%>% as.data.frame() %>% 
+mutate(Ndatos=nrow(Hog30))
+
+# names(prom1)
+Ndatos=nrow(Hog30)
+
+```
+
+
+Al inspeccionar las bases de microdatos de “Concentrado de hogares” de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2010, se observó que el número de hogares unipersonales entre 30 y 40 años es de `r Ndatos`. 
+A continuación se muestran la media de ambas variables:
+
+
+```{r}
+options(knitr.kable.NA = "-")
+
+knitr::kable(
+  prom1, booktabs = TRUE, format = 'latex', col.names = c( "Promedio nacional ($)","Numero de vivendas"),
+  caption = "Obervaciones y media de la ENIGH 2010, hogares unipersonales de 30 a 40 años"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+```
+A continuación se grafica los datos de ingreso y gasto trimestral por hogar en miles de pesos.
+
+```{r fig.cap='Relación entre el Gasto y el Ingreso trimestral por hogar unipersonal, 2010  de 30 a 40 años \\label{graf2}', fig.pos = 'H'}
+ayuda=Hog30/1000
+ggplot(ayuda,aes(x=ingreso,y=gasto),pch = 21) + geom_point()  + 
+  labs(title = " Gasto y el Ingreso trimestral por hogar, 2010 de  30 a 40 años")  +  theme(text=element_text(size=12,  family="serif"))+ geom_smooth(method=lm) + theme_bw() +
+scale_x_continuous(
+  name = "Ingreso en Miles de pesos",
+  limits = c(0,200),
+  position = "bottom",
+  sec.axis = waiver())+
+scale_y_continuous(
+  name = "Gasto en Miles de pesos",
+  limits = c(0,200),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")
+
+```
+A Continuación se presentan los resultados de la regresión
+
+```{r }
+modelo <- lm( gasto ~ ingreso, data = Hog30)
+coef <- modelo$coefficients %>% as.data.frame()
+colnames(coef)="coefcientes"
+residual <- summary( modelo ) $ adj.r.squared
+
+```
+Los estimadores de la regresión son:
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(coef, booktabs = TRUE, format = 'latex',
+             col.names = c( "Gasto = a + b*( ingreso) "),
+  caption = "Tabla de Regresión  Ingreso y Gasto trimestral, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+Dado lo anterior se tiene una ecuacion Gasto = `r coef[ 1,1]` + `r coef[ 2,1]`* ingreso, con un 
+Coeficiente de determinación R^2 ajustado = `r residual`
+
+
+  
+## (d)
+**Para todos los hogares unipersonales, estime el valor promedio del ingreso por edad, separando la muestra en grupos de edad de cinco años cada uno y grafíquelo.**
+
+```{r}
+mat <- hogara%>% ## aplicar filtros por grupo de  cada 5 años
+  group_by(q5) %>% 
+  summarise(Grupo = paste(mean(q5)," - ",mean(q5)+4), ingreso= mean(ingcor ), gasto= mean(gasmon ))
+
+mat <- mat %>%   dplyr::select(Grupo,ingreso,gasto)
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(G,In1,i,coef,ayuda,residual,prom1,modelo,g1,Ndatos,Hog30)
+```
+
+Utilizando la base de datos completa de la ENIGH 2016, se filtraron las observaciones pertinentes para este ejercicio, a saber: el tipo de hogar. Una vez hecho esto, se obtuvieron los promedios de ingreso y gasto por hogar en grupos de edad de 5 años, los cuales se muestran a continuación. 
+
+```{r }
+options(knitr.kable.NA = "-")
+
+knitr::kable(mat, booktabs = TRUE, format = 'latex',
+              caption = "Tabla de Regresión  Ingreso y Gasto trimestral agrupada, 2010"
+)%>%
+  kable_styling(latex_options = "HOLD_position",position="center")
+```
+A continuacion se muestra las graficas. 
+
+```{r fig.cap=' Gasto trimestral por hogar unipersonal, 2010 agrupado', fig.pos = 'H'}
+mode(mat$gasto)<-"numeric"
+
+ggplot(mat, aes(x=Grupo,y=gasto)) + 
+  geom_col(stat = "identity", fill = "darkgoldenrod1", color = "black", width = 0.6,position="stack") + 
+  theme_bw() +
+  labs(title = "Gasto trimestral por hogar unipersonal, 2010 agrupado") +  
+  theme(text = element_text(size=10), # Tamaño de fuente del gráfico por defecto
+          plot.title = element_text(size=rel(1.5), # Tamaño del título, doble del establecido por defecto
+                                    vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="brown2", #Color del texto
+                                    lineheight=1.5), #Separación entre líneas)
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position="none",
+          axis.title.x = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.title.y = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.text = element_text(colour = "black")) +
+geom_hline(yintercept = mean(mat$gasto),colour = "red" )+
+  scale_y_continuous(
+  name = "Gasto (pesos)",
+  position = "left",
+  sec.axis = waiver())
+```
+
+
+```{r fig.cap=' Ingreso trimestral por hogar unipersonal, 2010 agrupado', fig.pos = 'H'}
+pacman::p_load(scales)
+mode(mat$ingreso)<-"numeric"
+ggplot(mat, aes(x=Grupo,y=ingreso)) + 
+  geom_col(stat = "identity", fill = "darkolivegreen2", color = "black", width = 0.6,position="stack") + 
+  theme_bw() +
+  labs(title = "Ingreso trimestral por hogar unipersonal, 2010 agrupado") + 
+  theme(text = element_text(size=10), # Tamaño de fuente del gráfico por defecto
+          plot.title = element_text(size=rel(1.4), # Tamaño del título, doble del establecido por defecto
+                                    vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                    lineheight=1.5), #Separación entre líneas)
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position="none",
+          axis.title.x = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.title.y = element_text(face="bold", vjust=1.5, colour="blue", size=rel(1)),
+          axis.text = element_text(colour = "black"))+
+  geom_hline(yintercept = mean(mat$gasto),colour = "red" )+
+  scale_y_continuous(
+    name = "Ingreso (pesos)",
+    position = "left",
+    sec.axis = waiver())
+
+```
+
+
+## (e)
+**Interprete sus resultados a la luz de la HIP y comparados con los resultados para las variables agregadas.**
+
+
+1. Es claro que el ingreso promedio trimestral para hogares unipersonales tiene sus puntos más altos de los 26 hasta los 45 años. Esto debido a que se trata de individuos adultos jóvenes, potencialmente muy productivos, que viven solos, lo cual incrementa sustancialmente el ingreso promedio del hogar. 
+2. Por otro lado, a partir de los 71 años, se observa que los ingresos promedios trimestrales de hogares unilaterales caen por debajo de la media. Si suponemos que se trata de adultos mayores cuya productividad y oportunidades laborales son más bien escasas, el comportamiento tiene sentido. 
+3. En el caso del gasto promedio trimestral de hogares unipersonales, la tendencia es, si cabe, aún mucho más evidente: Los jóvenes adultos en etapa productiva tienen gastos sustancialmente altos. De hecho, se evidencia una tendencia consistentemente decreciente en el gasto trimestral cada lustro.
+\clearpage
+
+
+\clearpage

@@ -1,0 +1,528 @@
+---
+output: 
+  pdf_document:
+    includes:
+      before_body: portada.tex
+      in_header: 
+    toc: true
+    toc_depth: 3
+  tables: true
+include-before:
+- '`\newpage{}`{=latex}'
+toc-title: Contenido
+urlcolor: blue
+header-includes:
+- \usepackage[nottoc]{tocbibind}
+- \renewcommand{\listfigurename}{Lista de figuras}
+- \renewcommand{\listtablename}{Lista de tablas}
+- \usepackage[utf8]{inputenc}
+- \usepackage[spanish]{babel}
+- \usepackage{graphicx}
+- \usepackage{float}
+- \usepackage{lscape}
+---
+
+\newpage
+
+\listoffigures
+
+\listoftables
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.align="center", fig.pos = "H", fig.width = 7, fig.height = 3)
+```
+
+\clearpage
+
+
+```{r}
+pacman::p_load(tidyverse,dplyr,foreign,psych,
+               ggthemes,
+               haven, readxl,
+               kableExtra,
+               cowplot, ggplot2, scales, viridis, latticeExtra,
+               knitr, tinytex, reshape, lubridate, scales, reshape2)
+
+options(knitr.kable.NA = "-")
+```
+
+# Ejercicio 5
+**5. Estudie el “acertijo del premio al riesgo” para el caso de México siguiendo estos pasos:**
+
+## (a)
+**Consiga los valores anuales de IPC, el Indice de Precios y Cotizaciones de la Bolsa Mexicana de Valores por lo menos desde 1990.**
+
+```{r Bases eje5, include=FALSE}
+pacman::p_load(tidyverse, readr, foreign, msm, lubridate, readxl,knitr,kableExtra)
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+base5<- read_excel("BASE_5.xlsx")
+IPC2 <-base5 %>% as.data.frame()
+anio <- substr(as.Date(base5$Fecha, origin="1900-01-01"),1,4)
+IPC2 <-base5 %>% as.data.frame() 
+IPC2$anio <- anio%>% as.data.frame()
+colnames(IPC2) <- c("Fecha","Cetes28","Cetes91","Cetes182","Cetes364","Tie28","Tie91","IPC","Consumo","Imp","Anio")
+```
+
+
+Los valores anuales del Índice de Precios y Cotizaciones (IPC) en el periodo 1990-2021 se obtuvieron del Sistema de Información Económica de Banco de México.Dado que la periodicidad de los datos obtenidos era mensual, se prodecio a calcular promedios anuales. Cabe señalar que el índice tiene como base al año 1978.
+
+En la siguiente tabla se pueden observar el crecimiento sostenido y la tendencia positiva en el periodo de referencia.
+```{R 5.a, echo=FALSE}
+IPC2A  <- IPC2  %>%   filter(anio == 1990) %>%   summarise(IPC = mean(IPC))%>% mutate(Fecha=1990)
+  for (i in 1:31) {
+    IPC2A <-rbind(IPC2A, IPC2  %>%   filter(anio == 1990+i) %>%   summarise(IPC =   mean(IPC))%>% mutate(Fecha=1990+i))
+}
+IPC2A <- IPC2A %>%   dplyr::select(Fecha,IPC)
+periodo<-c(1990:2021)
+d1<-(IPC2A[1:11, ])
+d2<-(IPC2A[12:22, ])
+d3<-(IPC2A[23:33, ])
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","IPC Anual"),caption="Valor IPC Anual",digits=2) %>% kable_styling(latex_options = "HOLD_position")
+```
+A continuacion se presenta una grafica 
+```{r fig.cap='Índice de Precios y Cotizaciones de la BMV', fig.pos = 'H'}
+
+ggplot(IPC2A,aes(x=Fecha,y=IPC),pch = 25) + geom_line()  + 
+  labs(title = " Índice de Precios y Cotizaciones de la BMV")  +  
+  theme(text=element_text(size=12,  family="serif")) + 
+  theme_bw() +
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1990,2022),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Índice de Precios y Cotizaciones",
+  limits = c(200,50000),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+#geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")
+base5<-IPC2
+Base5.1 <-IPC2A
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(d1,d2,d3,i,anio,periodo)
+```
+
+## b)
+\textbf{Calcule su tasa de retorno nominal para cada año.}
+
+La tasa de retorno del IPC para el periodo 1990-2021 se calculó utilizando la formula de una tasa de crecimiento convencional:
+
+$$
+ \text { Rendimiento} \ IPC_{t}=\frac{\left(\text { IPC }_{t+1}\right)-\left(\text { IPC }_{t}\right)}{\left(\text { IPC }_{t}\right)}
+$$
+```{R 5.b, echo=FALSE}
+IPC_T<-c((na.omit((IPC2A [ ,2] /lag(IPC2A [ ,2]))-1)))
+Periodo<-c(1991:2021)
+IPC_ren<-data.frame(Periodo,IPC_T)
+names(IPC_ren)= c("Periodo","Rendimiento" )
+d1<-(IPC_ren[1:8, ])
+d2<-(IPC_ren[9:16, ])
+d3<-(IPC_ren[17:24, ])
+d4<-(IPC_ren[25:32, ])
+
+list(d1,d2,d3,d4)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","Rendimiento" ),
+                      caption="Rendimiento IPC Anual",digits=2) %>% 
+                kable_styling(latex_options = "HOLD_position")
+Base5.1<-Base5.1 [-c(1),] %>%mutate(data.frame(IPC_T)) %>%   dplyr::select(Fecha,IPC,IPC_T)
+colnames(Base5.1) <- c("Fecha","IPC","retorno_IPC")
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(d1,d2,d3,d4,anio,IPC_ren,periodo)
+```
+La siguiente gráfica muestra la evolución de la tasa de retorno del IPC, de 1991 a 2020. Para el cálculo
+se tomó la tasa de crecimiento del índice de un año a otro. Se observa una mayor variabilidad en los
+primeros años considerados, y más estabilidad en los últimos años. Las caídas más fuertes, coinciden con los
+acontecimientos que más han impactado de manera negativa en la economía mexicana, y que han tenido su
+orígen en el mercado financiero doméstico e internacional, como por ejemplo en 1994, 1998, 2008 y 2018.
+
+```{r  fig.cap=' Tasa de retorno del IPC de la BMV', fig.pos = 'H', fig.height=3.5}
+
+ggplot(Base5.1,aes(x=Fecha,y=retorno_IPC),pch = 25) + geom_line()  + 
+  labs(title = "  Tasa de retorno del IPC de la BMV")  +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Índice de Precios y Cotizaciones",
+  limits = c(-0.5,1),
+  position = "left",
+  sec.axis = waiver())+
+   theme(legend.position = "none") +
+#geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+```
+
+## c)
+
+\textbf{Consiga los valores promedio anual de la tasa de interés de CETES a 7 días, o la TIIE, la tasa inter-bancaria de equilibrio, y de la tasa de interés a un año, para el periodo que esté disponible.}
+
+En la siguiente tabla se pueden observar las tasas de interés de los Certificados de la Tesorería de la Federación (Cetes) a distintos plazos: 28, 91, 182 y 364 días. El comportamiento de estas tasas de interés a corto plazo es muy similar. Se observa que en los últimos 20 años, México ha reportado tasas de interés relativamente bajas en comparación con mediados de los 90’s, periodo en el cual se alcanzarón valores por arriba de 48 puntos porcentuales.
+
+```{r 5.c, echo=FALSE}
+
+Cete28 <- IPC2  %>%   filter(Anio == 1990) %>%   summarise(Cet28 = mean(Cetes28))%>% mutate(Fecha=1990)
+  for (i in 1:31) {
+    Cete28 <-rbind(Cete28, IPC2  %>%   filter(Anio == 1990+i) %>%   summarise(Cet28 =   mean(Cetes28))%>% mutate(Fecha=1990+i)) 
+                                                                                                                                           
+  }
+Cete28 <- Cete28 %>%  mutate(Cetes28=Cet28/100) %>%  dplyr::select(Fecha,Cetes28)
+
+C_28<-matrix(data= base5$Cetes28[1:385],nrow = 12, ncol = 32, byrow = FALSE)
+c_28_proa<-c(colMeans(C_28))*(1/100)
+
+C_91<-matrix(data= base5$`Cetes91`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_91_proa<-c(colMeans(C_91))*(1/100)
+
+C_182<-matrix(data= base5$`Cetes182`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_182_proa<-c(colMeans(C_182))*(1/100)
+
+C_364<-matrix(data= base5$`Cetes364`[1:384],nrow = 12, ncol = 32, byrow = FALSE)
+c_364_proa<-c(colMeans(C_364))*(1/100)
+
+tiie_28<-matrix(data= base5$`Tie28`[1:384], nrow = 12, ncol = 32, byrow = FALSE)
+tiie_28_proa<-c(colMeans(tiie_28))*(1/100)
+
+tiie_91<-matrix(data= base5$`Tie91`[1:384], nrow = 12, ncol = 32, byrow = FALSE)
+tiie_91_proa<-c(colMeans(tiie_91))*(1/100)
+
+result <- data.frame(c_28_proa,c_91_proa,c_182_proa, c_364_proa, tiie_28_proa, tiie_91_proa)
+result <- result[-c(1),]
+result<- Base5.1 %>% mutate(result)
+
+names(result)= c("Periodo","IPC","retorno_IPC", "Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+
+result%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Rendimiento Anual CETES",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+```
+Para el corto plazo se tomó la tasa de interés de CETES a 28 días y para el largo plazo se tomó la tasa de TII Ea 28 días. En la siguiente gráfica se muestra la evolución de ambas tasas, éstas muestran una tendencia descendente entre 1990 y 2020. Se observa un incremento drástico en 1995 con una tasa de 48.65 % debido a la crisis financiera originada internamente a finales de 1994 y principios de 1995.
+
+
+```{r fig.cap=' Tasa de CETES a 28 dia\\label{graf8}', fig.pos = 'H',fig.height=3.5 }
+Base5.1<- result
+
+names(Base5.1)= c("Periodo","IPC","retorno_IPC", "Cetes28", "Cetes91", "Cetes182", "Cetes364", "TIIE28", "TIIE91")
+ayuda1<-matrix(data= "Cetes 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda2<-matrix(data= "TIIE 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda <- c(ayuda1,ayuda2)
+ayuda <-ayuda %>%as.data.frame() 
+ayuda2<- c(Base5.1$Cetes28,Base5.1$TIIE28) %>%as.data.frame()
+cete1<-c(Base5.1$Periodo,Base5.1$Periodo) %>%as.data.frame() 
+grafo<-cbind(cete1,ayuda,ayuda2)
+names(grafo)= c("Periodo","Cetes28", "TIIE28")
+ggplot(grafo,aes(x=Periodo, y= TIIE28*100,color =Cetes28 ),pch = 25) +  geom_line()  + 
+  labs(title = "  Tasa de CETES a 28 dias") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " CETES  y TIIE a 28 dias (%)",
+  limits = c(0,50),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+
+```
+
+```{r 5.l, echo=FALSE}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(tie28,ayuda,ayuda,ayuda1,ayuda2,C_182,c_28_c364,tiie_28,tiie_91,i,periodo,Periodo,result)
+```
+
+
+
+
+
+## d)
+\textbf{Calcule la diferencia entre el retorno del IPC y el retorno de invertir en CETES a distintos plazos.}
+
+```{r 5.d, echo=FALSE}
+Base5.1<- Base5.1 %>%mutate(dif_c28=Base5.1$retorno_IPC-Base5.1$Cetes28) %>% mutate(dif_c91=Base5.1$retorno_IPC-Base5.1$Cetes91)%>% mutate(dif_c182=Base5.1$retorno_IPC-Base5.1$Cetes182) %>% mutate(dif_c364=Base5.1$retorno_IPC-Base5.1$Cetes364) %>% mutate(dif_tiie28=Base5.1$retorno_IPC-Base5.1$TIIE28) %>% mutate(dif_tiie91=Base5.1$retorno_IPC-Base5.1$TIIE91)
+
+dif_c28<-c(IPC_T- c_28_proa)
+dif_c91<-c(IPC_T- c_91_proa)
+dif_c182<-c(IPC_T- c_182_proa)
+dif_c364<-c(IPC_T- c_364_proa)
+dif_tiie28<-c(IPC_T- tiie_28_proa)
+dif_tiie91<-c(IPC_T- tiie_91_proa)
+Periodo<-c(1990:2021)
+result_dif <- Base5.1 %>%dplyr::select(Periodo,dif_c28,dif_c91,dif_c182,dif_c364, dif_tiie28, dif_tiie91)
+
+#kable(result_dif[1:32, ], caption = "Diferencia Entre Retornos")
+
+result_dif%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Diferencia Entre Retornos",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+```
+
+La siguiente gráfica muestra el diferencial de los retornos del IPC y de invertir en CETES a 28 días y el diferencial de los retornos del IPC y de invertir en CETES A 364 días. Se observa que el diferencial (exceso de rendimiento) para ambos casos es más estable en la última década. Se observan caídas importantes del exceso de rendimiento con respecto a los activos sin riesgo en 1995, 1998, 2000, 2008, y 2018.
+
+```{r 5.P, echo=FALSE}
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(result_dif)
+```
+
+```{r fig.cap=' Diferencial de retornos del IPC con respecto  a CETES a 28 y 364 días', fig.pos = 'H',fig.height=3.5 }
+
+ayuda1<-matrix(data= "Cetes 28",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda2<-matrix(data= "Cetes 364",nrow = 31, ncol = 1, byrow = FALSE)
+ayuda <-c(ayuda1,ayuda2) %>%as.data.frame() 
+ayuda2<- c(Base5.1$dif_c28,Base5.1$dif_c364) %>%as.data.frame()
+cete1<-c(Base5.1$Periodo,Base5.1$Periodo) %>%as.data.frame() 
+grafo<-cbind(cete1,ayuda,ayuda2)
+names(grafo)= c("Periodo","Cetes28", "Cestes364")
+ggplot(grafo,aes(x=Periodo, y= Cestes364*100,color =Cetes28 ),pch = 25) +  geom_line()  + 
+  labs(title = " Diferencial de retornos del IPC con respecto  a CETES a 28 y 364 días") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1991,2021),
+    position = "bottom",
+    n.breaks = 22,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Diferencial de retornos (%)",
+  limits = c(-50,75),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda)
+```
+
+
+## e) y f)
+\textbf{Calcule la covarianza entre dicha diferencias y la tasa de crecimiento real del consumo agregado de la economía mexicana y calcule el valor de aversión relativa al riesgo que implican estos números, dado el supuesto de una utilidad con forma ARRC.}
+
+A continuación se muestra la tasa de crecimiento del consumo agregado con datos correspondientes a la serie de "Consumo Privado" para el periodo 1994-2020, obtenidos del Banco de Información Económica (BIE) del Instituto Nacional de Estadística y Geografía (INEGI).
+
+```{R 5.e.1, echo=FALSE, results='asis'}
+
+C<-matrix(data= base5$Consumo[1:112],nrow = 4, ncol = 28, byrow = FALSE)
+c_proa<-c(colMeans(C))
+C_T <-c((na.omit((c_proa/lag(c_proa) - 1))))
+
+Periodo<-c(1994:2020)
+
+result_con <-data.frame(Periodo,C_T)
+d1<-result_con[1:9, ]
+d2<-result_con[10:18, ]
+d3<-result_con[19:27, ]
+
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , caption="Tasa de Crecimiento Consumo",digits=4) %>% 
+       kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+
+En la siguiente gráfica se muestra la evolución de la tasa de crecimiento del consumo (g c ) de la economía mexicana de 1994 a 2020. Las caídas más drásticas se obervan en 1995, 2009 y 2020, siendo sta última la
+caida más grande del periodo, con una tasa de -7.0 %, casi del doble de la caída de 1995 y 2009.
+
+```{r fig.cap=' Tasa de Crecimiento Consumo', fig.pos = 'H' }
+
+ggplot(result_con,aes(x=Periodo, y= C_T*100 ),pch = 25) +  geom_line()  + 
+  labs(title = " Tasa de Crecimiento Consumo") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1994,2021),
+    position = "bottom",
+    n.breaks = 10,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Tasa de Crecimiento Consumo(%)",
+  limits = c(-10,10),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda,C,c_proa,C_28)
+```
+El cálculo de la covarianza entre CETES y la tasa de consumo encontrada se realizó conforme a la siguiente fórmula:
+
+$$\sigma_{r^{i} - r^{j},g^{c}} = E[(r^{i} - r^{j})* g^{c}] - E[r^{i} - r^{j}]E[g^{c}]$$
+
+Y el valor de aversión relativo al riesgo con la fórmula:
+$$
+\theta=\frac{E\left[r^{i}\right]-E\left[r^{j}\right]}{\operatorname{Cov}\left(r^{i}-r^{j}, g^{c}\right)}
+$$
+Donde $\theta$ representa el coeficiente de aversión al riesgo; $E\left[r^{i}\right]-E\left[r^{j}\right]$ es la diferencia de los rendimientos esperados de la tasa de los activos (IPC) y $g^{c}$ representa la tasa de crecimiento del consumo.
+
+```{R 5.e.f, echo=FALSE,results='asis'}
+cov_c28<-cov(C_T,dif_c28[5:31])
+cov_c91<-cov(C_T,dif_c91[5:31])
+cov_c182<-cov(C_T,dif_c182[5:31])
+cov_c364<-cov(C_T,dif_c364[5:31])
+cov_tiie28<-cov(C_T[3:27],dif_tiie28[7:31])
+cov_tiie91<-cov(C_T[4:27],dif_tiie28[8:31])
+
+theta1<- mean(dif_c28)/cov_c28
+  theta2<- mean(dif_c91)/cov_c91
+  theta3<- mean(dif_c182)/cov_c182
+  theta4<- mean(dif_c364)/cov_c364
+  theta5<- mean(dif_tiie28)/cov_tiie28
+  theta6<- mean(dif_tiie91)/cov_tiie91
+  
+  theta<-c(theta1,theta2,theta3,theta4,theta5,theta6)
+   Covarianza<-c(cov_c28,cov_c91,cov_c182,cov_c364, cov_tiie28, cov_tiie91)
+  Bono<-c("Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+   
+  result_consumo<-data.frame(Bono,Covarianza,theta)
+  
+  names(result_consumo)= c("Bono","Covarianza","Theta")
+
+  
+  ##kable(result_consumo[1:6, ], caption = "Covarianza y Aversión Relativa al Riesgo")
+  
+  result_consumo%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Bono","Covarianza","Theta"), caption="Covarianza y Aversión Relativa al Riesgo",digits=3) %>% 
+      kable_styling(latex_options = "HOLD_position",position="center")
+
+```
+## g) y h)
+\textbf{Ahora calcule la covarianza entre dicha diferencias y la tasa de crecimiento real del consumo agregado DE BIENES IMPORTADOS y calcule el valor de aversión relativa al riesgo que implican estos números, dado  el supuesto de una utilidad con forma ARRC.}
+
+Del BIE se obtubo la serie "Indicador mensual del consumo privado en el mercado interior,Bienes importados", la cual está compuesta por un índice que proporciona información sobre la proporción dee bienes de importación que se consumen en el país. Debido a su periodicidad mensual, se procedio en primera instancia a realizar una anualización para posteriormente calcular su variación anual mediante una tasa de crecimiento convencional.
+
+Con respecto al cálculo de covarianza e indicador de aversión, se siguió el mismo procedimiento que en los incisos e) y f). A continuación se muestran los resultados obtenidos.
+
+
+```{R 5.g.h, echo=FALSE }
+#base5_imp<- read_excel("Impor_BIE.xls")
+C_imp<-matrix(data= base5$Imp [1:336],nrow = 12, ncol = 28, byrow = FALSE)
+C_imp_proa<-c(colMeans(C_imp))
+C_Imp_T <-c((na.omit((C_imp_proa/lag(C_imp_proa) - 1))))
+
+cov_c28_imp<-cov(C_Imp_T,dif_c28[5:31])
+cov_c91_imp<-cov(C_Imp_T,dif_c91[5:31])
+cov_c182_imp<-cov(C_Imp_T,dif_c182[5:31])
+cov_c364_imp<-cov(C_Imp_T,dif_c364[5:31])
+cov_tiie28_imp<-cov(C_Imp_T[3:27],dif_tiie28[7:31])
+cov_tiie91_imp<-cov(C_Imp_T[4:27],dif_tiie91[8:31])
+
+theta1_imp<- mean(dif_c28)/cov_c28_imp
+theta2_imp<- mean(dif_c91)/cov_c91_imp
+theta3_imp<- mean(dif_c182)/cov_c182_imp
+theta4_imp<- mean(dif_c364)/cov_c364_imp
+theta5_imp<- mean(dif_tiie28[7:31])/cov_tiie28_imp
+theta6_imp<- mean(dif_tiie91[8:31])/cov_tiie91_imp
+
+Covarianza_Imp<-c(cov_c28_imp,cov_c91_imp,cov_c182_imp,cov_c364_imp, cov_tiie28_imp, cov_tiie91_imp)
+theta_Imp<-c(theta1_imp,theta2_imp,theta3_imp,theta4_imp,theta5_imp,theta6_imp)
+  Bono<-c("Cetes 28", "Cetes 91", "Cetes 182", "Cetes 364", "TIIE 28", "TIIE 91")
+
+result_consumo_Imp<-data.frame(Bono,Covarianza_Imp,theta_Imp)
+names(result_consumo_Imp)= c("Bono","Covarianza","Theta")
+
+Periodo<-c(1994:2020)
+result_con_imp<-data.frame(Periodo,C_Imp_T)
+
+
+d1<-result_con_imp[1:9, ]
+d2<-result_con_imp[10:18, ]
+d3<-result_con_imp[19:27, ]
+
+```
+
+```{R , echo=FALSE }
+list(d1,d2,d3)%>% kable(format="latex",booktabs=TRUE,row.names = FALSE , col.names= c("Periodo","Tasa Consumo"), caption="Tasa de Crecimiento Consumo de Bienes Importados",digits=4) %>% 
+                kable_styling(latex_options = "HOLD_position")
+
+
+```
+A continucaion se muestra la grafica del Crecimiento Consumo de Bienes Importados
+
+```{r fig.cap=' Tasa de Crecimiento Consumo de Bienes Importados', fig.pos = 'H' }
+
+ggplot(result_con_imp,aes(x=Periodo, y= C_Imp_T*100 ),pch = 25) +  geom_line()  + 
+  labs(title = " Tasa de Crecimiento Consumo de Bienes Importados") +  
+    theme_bw() +
+  theme(text=element_text(size=12,  family="serif"),
+        plot.title = element_text(size=rel(1.4),
+         # Tamaño del título, doble del establecido por defecto
+                            vjust=2, #Justificación vertical, para separarlo del gráfico
+                                    face="bold", #Letra negrilla
+                                    color="darkgreen", #Color del texto
+                                lineheight=1.5))+ #Separación entre líneas)) + 
+  scale_x_continuous(
+    name = "Años",
+    limits = c(1994,2021),
+    position = "bottom",
+    n.breaks = 10,
+    sec.axis = waiver())+
+scale_y_continuous(
+  name = " Tasa de Crecimiento Consumo(%)",
+  limits = c(-50,40),
+  position = "left",
+  sec.axis = waiver())+
+   #geom_hline(yintercept = prom1[2,1]/1000,colour = "red" ,caption="Prom")+
+geom_point( col = "chartreuse4")+
+geom_hline(yintercept = 0,colour = "Blue" )
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(ayuda1,cete1,ayuda2,grafo,ayuda,C,c_proa,C_28)
+```
+
+```{R , echo=FALSE }
+
+kable(result_consumo_Imp[1:6, ],format="latex",booktabs=TRUE, caption= "Covarianza y Aversión Realativa al Riesgo c.r.a Bienes Importados") %>% 
+                kable_styling(latex_options = "HOLD_position")
+
+# limpia la pantalla de tablas o basura de un ejercicio anterior
+rm(list = ls())
+```
+## i)
+\textbf{Interprete sus resultados.}
+
+Para la primera muestra, el coeficiente theta oscila relativamente constante entre el corto (28 días) y largo plazo (364 días) además
+presentan un coefciente de aversión muy alto, congruente con la evidencia empírica del acertijo de la prima
+de acción.Destaca que para el caso de la TIEE el valor de theta resulta más alto.
+
+Para  la segunda muestra, el coeficiente theta es menor, alrededor 3.74 promedio para CETES de corto y largo plazo y un promedio de 5.59 para el caso de la TIIE.
+Podemos relacionar este resultado a los obtenidos por Ait-Sahalia et al. incorporando el consumo de bienes
+de lujos; una variable proxy puede ser el consumo de bienes importados.
+
+
+\clearpage
